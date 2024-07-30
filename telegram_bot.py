@@ -14,10 +14,9 @@ logger = logging.getLogger(__name__)
 
 # Your Django API endpoint and credentials
 API_URL = "http://127.0.0.1:8000/myapp/api/orders/number/"
-USERNAME = "admin"  # Замените на ваш реальный логин
-PASSWORD = "hp13199113"  # Замените на ваш реальный пароль
+USERNAME = ""  
+PASSWORD = ""  
 
-# Dictionary for status translation
 STATUS_CHOICES = {
     'opl_na_proyavku': 'Статус твоего заказа: оплачен, в очереди на проявку! 🎞',
     'opl_na_skan': 'Статус твоего заказа: оплачен, в очереди на сканирование! 🎞',
