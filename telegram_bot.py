@@ -3,6 +3,15 @@ import requests
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
 from requests.auth import HTTPBasicAuth
+from dotenv import load_dotenv
+import os
+
+# Load environment variables
+load_dotenv()
+
+# Debugging: Print loaded environment variables
+print(f"Loaded USERNAME: {os.getenv('USERNAME')}")
+print(f"Loaded PASSWORD: {os.getenv('PASSWORD')}")
 
 # Enable logging
 logging.basicConfig(
@@ -13,10 +22,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Your Django API endpoint and credentials
-API_URL = "http://127.0.0.1:8000/myapp/api/orders/number/"
-USERNAME = ""  
-PASSWORD = ""  
+API_URL = os.getenv("API_URL")
+USERNAME = os.getenv("USERNAME")
+PASSWORD = os.getenv("PASSWORD")
 
+# Dictionary for status translation
 STATUS_CHOICES = {
     'opl_na_proyavku': 'Статус твоего заказа: оплачен, в очереди на проявку! 🎞',
     'opl_na_skan': 'Статус твоего заказа: оплачен, в очереди на сканирование! 🎞',
@@ -29,7 +39,6 @@ STATUS_CHOICES = {
     'no_gotov': 'Статус твоего заказа: не оплачен, готов',
     'srchno_opl_na_proyavku': 'Статус твоего заказа: ⚡️срочный заказ⚡️, оплачен, в очереди на проявку!',
     'srchno_opl_na_skan': 'Статус твоего заказа:⚡️срочный заказ⚡️, оплачен, в очереди на сканирование!',
-    'no_na_proyavku': 'Статус твоего заказа: не оплачен, в очереди на проявку.',
 }
 
 async def start(update: Update, context: CallbackContext) -> None:
@@ -62,19 +71,7 @@ async def check_order_status(update: Update, context: CallbackContext) -> None:
 
                 # Format response message
                 message = (
-                    # f"Order Number: {order_data['order_number']}\n"
-                    # f"Client Name: {order_data['client']['first_name']} {order_data['client']['last_name']}\n"
-                    # f"Phone Number: {order_data['client']['phone_number']}\n"
-                    # f"Email: {order_data['client']['email']}\n"
-                    # f"Total Spent: {order_data['client']['total_spent']}\n"
-                    # f"Student ID: {order_data['client']['student_id']}\n"
-                    # f"Student ID Expiry Date: {order_data['client']['student_id_expiry_date']}\n"
-                    # f"Created At: {order_data['created_at']}\n"
                     f"{status_description}\n"
-                    # f"Processed By: {order_data['processed_by']}\n"
-                    # f"Scanned By: {order_data['scanned_by']}\n"
-                    # f"Shipped By: {order_data['shipped_by']}\n"
-                    # f"Printed By: {order_data['printed_by']}"
                 )
                 await update.message.reply_text(message)
             else:
@@ -88,7 +85,7 @@ async def check_order_status(update: Update, context: CallbackContext) -> None:
 def main() -> None:
     """Start the bot."""
     # Create the Application and pass it your bot's token.
-    application = Application.builder().token("6712054238:AAHM5RJtgmCF29hTDTL_HYPomJezbALO9_8").build()
+    application = Application.builder().token(os.getenv("TELEGRAM_TOKEN")).build()
 
     # on different commands - answer in Telegram
     application.add_handler(CommandHandler("start", start))
