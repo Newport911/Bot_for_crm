@@ -1,15 +1,20 @@
-version: '3.8'
+version: '3'
 
 services:
   bot:
     build: .
+    env_file:
+      - .env
     restart: always
-    volumes:
-      - .:/app
-    environment:
-      - TZ=Europe/Moscow
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    networks:
+      - bot_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+networks:
+  bot_network:
+    driver: bridge

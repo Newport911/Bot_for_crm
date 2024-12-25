@@ -1,34 +1,22 @@
-# Используем Python 3.11 как базовый образ
 FROM python:3.11-slim
 
-# Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Копируем зависимости в контейнер
-COPY requirements.txt .
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y curl iputils-ping net-tools && \
+    rm -rf /var/lib/apt/lists/*
 
-# Устанавливаем зависимости
+# Install Python dependencies
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем весь проект в контейнер
+# Copy application code
 COPY . .
 
-# Добавляем метаданные
-LABEL maintainer="your-email@example.com"
-LABEL version="1.0"
-LABEL description="Telegram Bot for CRM"
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
 
-# Настраиваем переменные окружения
-ENV PYTHONUNBUFFERED=1
-ENV TZ=Europe/Moscow
-
-# Создаем непривилегированного пользователя
-RUN useradd -m -u 1000 botuser
-USER botuser
-
-# Добавляем HEALTHCHECK для мониторинга
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD python -c "import sys; sys.exit(0 if 'telegram_bot.py' in str(open('/proc/1/cmdline').read()) else 1)"
-
-# Указываем команду для запуска бота
+# Run the application
 CMD ["python", "telegram_bot.py"]
