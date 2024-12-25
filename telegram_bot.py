@@ -38,15 +38,21 @@ async def check_rate_limit(user_id):
     now = datetime.now()
     if user_id in user_last_request_time:
         last_request_time = user_last_request_time[user_id]
-        if now - last_request_time < MIN_REQUEST_INTERVAL:
-            return False
+        time_since_last_request = now - last_request_time
+        if time_since_last_request < MIN_REQUEST_INTERVAL:
+            remaining_time = MIN_REQUEST_INTERVAL - time_since_last_request
+            return False, remaining_time
     user_last_request_time[user_id] = now
-    return True
+    return True, None
 
 async def start(update: Update, context: CallbackContext) -> None:
     user_id = update.message.from_user.id
-    if not await check_rate_limit(user_id):
-        await update.message.reply_text("Слишком много запросов. Пожалуйста, подождите немного.")
+    allowed, remaining_time = await check_rate_limit(user_id)
+    if not allowed:
+        seconds_left = int(remaining_time.total_seconds())
+        await update.message.reply_text(
+            f"Слишком много запросов. Пожалуйста, подождите еще {seconds_left} секунд."
+        )
         return
 
     # Создаем клавиатуру с кнопками
@@ -65,8 +71,12 @@ async def start(update: Update, context: CallbackContext) -> None:
 
 async def check_order_status(update: Update, context: CallbackContext) -> None:
     user_id = update.message.from_user.id
-    if not await check_rate_limit(user_id):
-        await update.message.reply_text("Слишком много запросов. Пожалуйста, подождите немного.")
+    allowed, remaining_time = await check_rate_limit(user_id)
+    if not allowed:
+        seconds_left = int(remaining_time.total_seconds())
+        await update.message.reply_text(
+            f"Слишком много запросов. Пожалуйста, подождите еще {seconds_left} секунд."
+        )
         return
 
     try:
@@ -112,8 +122,12 @@ async def check_order_status(update: Update, context: CallbackContext) -> None:
 
 async def available_products_command(update: Update, context: CallbackContext) -> None:
     user_id = update.message.from_user.id
-    if not await check_rate_limit(user_id):
-        await update.message.reply_text("Слишком много запросов. Пожалуйста, подождите немного.")
+    allowed, remaining_time = await check_rate_limit(user_id)
+    if not allowed:
+        seconds_left = int(remaining_time.total_seconds())
+        await update.message.reply_text(
+            f"Слишком много запросов. Пожалуйста, подождите еще {seconds_left} секунд."
+        )
         return
 
     try:
