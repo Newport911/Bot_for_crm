@@ -1,6 +1,6 @@
 import logging
 import requests
-from telegram import Update
+from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
 from requests.auth import HTTPBasicAuth
 from dotenv import load_dotenv
@@ -8,10 +8,6 @@ import os
 
 # Load environment variables
 load_dotenv()
-
-# Debugging: Print loaded environment variables
-print(f"Loaded USERNAME: {os.getenv('USERNAME')}")
-print(f"Loaded PASSWORD: {os.getenv('PASSWORD')}")
 
 # Enable logging
 logging.basicConfig(
@@ -42,11 +38,22 @@ STATUS_CHOICES = {
 }
 
 async def start(update: Update, context: CallbackContext) -> None:
-    await update.message.reply_text('Здравствуйте! Введите номер заказа и номер телефона через пробел.')
+    # Создаем клавиатуру с кнопками
+    keyboard = [
+        ["Проверить статус заказа"],
+        ["Помощь", "Контакты"]
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+    # Отправляем сообщение с клавиатурой
+    await update.message.reply_text(
+        'Здравствуйте! Введите номер заказа и номер телефона через пробел.',
+        reply_markup=reply_markup
+    )
 
 async def check_order_status(update: Update, context: CallbackContext) -> None:
     try:
-        # Split the message into order number and phone number
+        # Разделяем сообщение на номер заказа и номер телефона
         parts = update.message.text.split()
         if len(parts) != 2:
             await update.message.reply_text("Пожалуйста, введите номер заказа и номер телефона через пробел.")
@@ -54,22 +61,26 @@ async def check_order_status(update: Update, context: CallbackContext) -> None:
 
         order_number, phone_number = parts
 
-        # Construct the API URL
+        # Убираем '+' в начале номера телефона, если он есть
+        if phone_number.startswith('+'):
+            phone_number = phone_number[1:]
+
+        # Формируем URL для API
         url = f"{API_URL}{order_number}/"
 
-        # Make the request with Basic Authentication
+        # Выполняем запрос с базовой аутентификацией
         response = requests.get(url, auth=HTTPBasicAuth(USERNAME, PASSWORD))
 
-        # Log the response for debugging
+        # Логируем ответ для отладки
         logger.info(f"API response: {response.status_code} {response.text}")
 
         if response.status_code == 200:
             order_data = response.json()
             if order_data['client']['phone_number'] == phone_number:
-                # Get status description from STATUS_CHOICES
+                # Получаем описание статуса из STATUS_CHOICES
                 status_description = STATUS_CHOICES.get(order_data['status'], 'Неизвестный статус')
 
-                # Format response message
+                # Форматируем сообщение ответа
                 message = (
                     f"{status_description}\n"
                 )
@@ -82,9 +93,14 @@ async def check_order_status(update: Update, context: CallbackContext) -> None:
         logger.error(f"Error checking order status: {e}")
         await update.message.reply_text("Произошла ошибка при проверке заказа. Пожалуйста, повторите попытку позже.")
 
+async def help_command(update: Update, context: CallbackContext) -> None:
+    await update.message.reply_text("Это бот для проверки статуса заказа. Введите номер заказа и номер телефона через пробел.")
+
+async def contact_command(update: Update, context: CallbackContext) -> None:
+    await update.message.reply_text("Контакты: support@example.com, Телефон: +123456789")
+
 def main() -> None:
     """Start the bot."""
-    # Create the Application and pass it your bot's token.
     application = Application.builder().token(os.getenv("TELEGRAM_TOKEN")).build()
 
     # on different commands - answer in Telegram
@@ -92,6 +108,11 @@ def main() -> None:
 
     # on noncommand i.e message - check order status
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_order_status))
+
+    # Add handlers for button presses
+    application.add_handler(MessageHandler(filters.Regex('^Проверить статус заказа$'), check_order_status))
+    application.add_handler(MessageHandler(filters.Regex('^Помощь$'), help_command))
+    application.add_handler(MessageHandler(filters.Regex('^Контакты$'), contact_command))
 
     # Start the Bot
     application.run_polling()
