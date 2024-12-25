@@ -1,4 +1,5 @@
 import logging
+import json
 import requests
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
@@ -41,7 +42,8 @@ async def start(update: Update, context: CallbackContext) -> None:
     # Создаем клавиатуру с кнопками
     keyboard = [
         ["Проверить статус заказа"],
-        ["Помощь", "Контакты"]
+        ["Помощь", "Контакты"],
+        ["Пленка в наличии"]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
@@ -93,6 +95,33 @@ async def check_order_status(update: Update, context: CallbackContext) -> None:
         logger.error(f"Error checking order status: {e}")
         await update.message.reply_text("Произошла ошибка при проверке заказа. Пожалуйста, повторите попытку позже.")
 
+
+async def available_products_command(update: Update, context: CallbackContext) -> None:
+    try:
+        # Получаем URL и учетные данные из переменных окружения
+        products_url = os.getenv("PRODUCTS_API_URL")
+        username = os.getenv("PRODUCTS_API_USERNAME")
+        password = os.getenv("PRODUCTS_API_PASSWORD")
+
+        # Выполняем запрос к API
+        response = requests.get(products_url, auth=HTTPBasicAuth(username, password))
+
+        if response.status_code == 200:
+            products = response.json()
+            message = "Доступные товары:\n"
+            for product in products:
+                price = float(product['price'])
+                discount = float(product['discount'])
+                final_price = price - discount if discount > 0 else price
+                message += f"Название: {product['name']}, Цена: {final_price}, Количество: {product['quantity']}\n"
+            await update.message.reply_text(message)
+        else:
+            await update.message.reply_text("Не удалось получить список товаров. Попробуйте позже.")
+    except Exception as e:
+        logger.error(f"Error fetching available products: {e}")
+        await update.message.reply_text("Произошла ошибка при получении списка товаров. Пожалуйста, повторите попытку позже.")
+
+
 async def help_command(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text("Это бот для проверки статуса заказа. Введите номер заказа и номер телефона через пробел.")
 
@@ -106,13 +135,14 @@ def main() -> None:
     # on different commands - answer in Telegram
     application.add_handler(CommandHandler("start", start))
 
-    # on noncommand i.e message - check order status
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_order_status))
-
     # Add handlers for button presses
+    application.add_handler(MessageHandler(filters.Regex('^Пленка в наличии$'), available_products_command))
     application.add_handler(MessageHandler(filters.Regex('^Проверить статус заказа$'), check_order_status))
     application.add_handler(MessageHandler(filters.Regex('^Помощь$'), help_command))
     application.add_handler(MessageHandler(filters.Regex('^Контакты$'), contact_command))
+
+    # on noncommand i.e message - check order status
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, check_order_status))
 
     # Start the Bot
     application.run_polling()
