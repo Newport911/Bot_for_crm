@@ -1,11 +1,11 @@
 import logging
-import json
 import requests
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
 from requests.auth import HTTPBasicAuth
 from dotenv import load_dotenv
 import os
+from datetime import datetime, timedelta
 
 # Load environment variables
 load_dotenv()
@@ -25,20 +25,30 @@ PASSWORD = os.getenv("PASSWORD")
 
 # Dictionary for status translation
 STATUS_CHOICES = {
-    'opl_na_proyavku': 'Статус твоего заказа: оплачен, в очереди на проявку! 🎞',
-    'opl_na_skan': 'Статус твоего заказа: оплачен, в очереди на сканирование! 🎞',
-    'opl_na_otpravku': 'Статус твоего заказа: оплачен, скоро будет отправлен на почту!',
-    'opl_na_pechat': 'Статус твоего заказа: оплачен, в очереди на печать! 🌠',
-    'opl_gotov': 'Статус твоего заказа: оплачен и готов 💫 Можно забирать!',
-    'opl_gotov_otpr': 'Статус твоего заказа: оплачен, готов и отправлен на e-mail 📩',
-    'opl_gotov_otpr_otdan': 'Статус твоего заказа: оплачен, готов, отправлен на e-mail и отдан тебе 🙂',
-    'opl_gotov_otdan': 'Статус твоего заказа: оплачен, готов и отдан тебе 🙂',
-    'no_gotov': 'Статус твоего заказа: не оплачен, готов',
-    'srchno_opl_na_proyavku': 'Статус твоего заказа: ⚡️срочный заказ⚡️, оплачен, в очереди на проявку!',
-    'srchno_opl_na_skan': 'Статус твоего заказа:⚡️срочный заказ⚡️, оплачен, в очереди на сканирование!',
+    # Add your status choices here
 }
 
+# Dictionary to track the last request time for each user
+user_last_request_time = {}
+
+# Minimum interval between requests (e.g., 5 seconds)
+MIN_REQUEST_INTERVAL = timedelta(seconds=5)
+
+async def check_rate_limit(user_id):
+    now = datetime.now()
+    if user_id in user_last_request_time:
+        last_request_time = user_last_request_time[user_id]
+        if now - last_request_time < MIN_REQUEST_INTERVAL:
+            return False
+    user_last_request_time[user_id] = now
+    return True
+
 async def start(update: Update, context: CallbackContext) -> None:
+    user_id = update.message.from_user.id
+    if not await check_rate_limit(user_id):
+        await update.message.reply_text("Слишком много запросов. Пожалуйста, подождите немного.")
+        return
+
     # Создаем клавиатуру с кнопками
     keyboard = [
         ["Проверить статус заказа"],
@@ -54,6 +64,11 @@ async def start(update: Update, context: CallbackContext) -> None:
     )
 
 async def check_order_status(update: Update, context: CallbackContext) -> None:
+    user_id = update.message.from_user.id
+    if not await check_rate_limit(user_id):
+        await update.message.reply_text("Слишком много запросов. Пожалуйста, подождите немного.")
+        return
+
     try:
         # Разделяем сообщение на номер заказа и номер телефона
         parts = update.message.text.split()
@@ -95,8 +110,12 @@ async def check_order_status(update: Update, context: CallbackContext) -> None:
         logger.error(f"Error checking order status: {e}")
         await update.message.reply_text("Произошла ошибка при проверке заказа. Пожалуйста, повторите попытку позже.")
 
-
 async def available_products_command(update: Update, context: CallbackContext) -> None:
+    user_id = update.message.from_user.id
+    if not await check_rate_limit(user_id):
+        await update.message.reply_text("Слишком много запросов. Пожалуйста, подождите немного.")
+        return
+
     try:
         # Получаем URL и учетные данные из переменных окружения
         products_url = os.getenv("PRODUCTS_API_URL")
@@ -136,6 +155,7 @@ async def available_products_command(update: Update, context: CallbackContext) -
     except Exception as e:
         logger.error(f"Error fetching available products: {e}")
         await update.message.reply_text("Произошла ошибка при получении списка товаров. Пожалуйста, повторите попытку позже.")
+
 async def help_command(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text("Это бот для проверки статуса заказа. Введите номер заказа и номер телефона через пробел.")
 
