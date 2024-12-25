@@ -108,20 +108,34 @@ async def available_products_command(update: Update, context: CallbackContext) -
 
         if response.status_code == 200:
             products = response.json()
-            message = "Доступные товары:\n"
+            message = "📦 *Доступные товары:*\n\n"
             for product in products:
                 price = float(product['price'])
                 discount = float(product['discount'])
                 final_price = price - discount if discount > 0 else price
-                message += f"Название: {product['name']}, Цена: {final_price}, Количество: {product['quantity']}\n"
-            await update.message.reply_text(message)
+
+                # Определяем текст для количества
+                quantity = product['quantity']
+                if quantity < 2:
+                    quantity_text = "Осталась пара штук"
+                elif quantity < 10:
+                    quantity_text = "Осталась последние 10"
+                elif quantity < 20:
+                    quantity_text = "Много"
+                else:
+                    quantity_text = "Целая гора"
+
+                message += (
+                    f"🔹 *Название:* {product['name']}\n"
+                    f"💰 *Цена:* {final_price:.2f} {'(Скидка: ' + str(discount) + ')' if discount > 0 else ''}\n"
+                    f"📊 *Количество:* {quantity_text}\n\n"
+                )
+            await update.message.reply_text(message, parse_mode='Markdown')
         else:
             await update.message.reply_text("Не удалось получить список товаров. Попробуйте позже.")
     except Exception as e:
         logger.error(f"Error fetching available products: {e}")
         await update.message.reply_text("Произошла ошибка при получении списка товаров. Пожалуйста, повторите попытку позже.")
-
-
 async def help_command(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text("Это бот для проверки статуса заказа. Введите номер заказа и номер телефона через пробел.")
 
