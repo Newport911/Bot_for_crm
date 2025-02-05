@@ -58,6 +58,10 @@ def help_request(client, message):
 def social_media(client, message):
     message.reply_text("Ссылка на наши соцсети")
 
+
+"""Кнопка отвечающая за получение списка доступных товаров. Если товары уже были загружены в кэш, они будут извлечены из
+ кэша. Если нет, будут загружены с сервера и сохранены в кэш для быстрого доступа в будущем. Если возникла ошибка при 
+ получении данных, будет отправлено сообщение об ошибке.")"""
 @app.on_message(filters.text & filters.private & filters.regex("^Пленка в наличии$"))
 def available_products(client, message):
     if "products" in cache:
