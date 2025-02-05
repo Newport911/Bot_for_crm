@@ -71,7 +71,16 @@ def available_products(client, message):
             products = response.json()
             product_list = "📦 **Доступные товары:**\n\n"
             for product in products:
-                product_list += f"🔹 **Название:** {product['name']}\n💰 Цена: {product['price']}\n📊 Количество: {product['quantity']}\n\n"
+                quantity = product['quantity']
+                if quantity < 2:
+                    quantity_text = "Осталась пара штук"
+                elif quantity < 10:
+                    quantity_text = "Осталась последние 10"
+                elif quantity < 20:
+                    quantity_text = "Много"
+                else:
+                    quantity_text = "Целая гора"
+                product_list += f"🔹 **Название:** {product['name']}\n💰 Цена: {product['price']}\n📊 Количество: {quantity_text}\n\n"
             cache["products"] = product_list
         except requests.exceptions.RequestException as e:
             message.reply_text(f"Ошибка при получении данных, попробуйте позже {e}")
