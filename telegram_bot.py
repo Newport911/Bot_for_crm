@@ -52,7 +52,10 @@ def status_order(client, message):
 
 @app.on_message(filters.text & filters.private & filters.regex("^Нужна помощь$"))
 def help_request(client, message):
-    message.reply_text("Наш менеджер поможет вам с заказом.")
+    manager_username = "phsquat_chat"  # Замените на имя пользователя менеджера
+    message.reply_text(f"Вы можете связаться с нашим менеджером по этой ссылке: https://t.me/{manager_username}")
+
+
 
 @app.on_message(filters.text & filters.private & filters.regex("^Наши соц сети$"))
 def social_media(client, message):
