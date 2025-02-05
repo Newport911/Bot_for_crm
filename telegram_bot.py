@@ -3,8 +3,6 @@ from pyrogram.types import ReplyKeyboardMarkup, KeyboardButton
 from cachetools import TTLCache
 import os
 from dotenv import load_dotenv
-import httpx
-from requests.auth import HTTPBasicAuth
 
 import httpx
 from requests.auth import HTTPBasicAuth
@@ -22,7 +20,7 @@ API_URL_FOR_ORDER = os.getenv("API_URL_FOR_ORDER")
 cache = TTLCache(maxsize=1, ttl=300)
 
 TIMEOUT = 30.0
-REQUEST_TIMEOUT = httpx.Timeout(TIMEOUT)
+REQUEST_TIMEOUT = httpx.Timeout(TIMEOUT) #таймайут запроса, что бы функции не повисали намертво если api недоступна
 
 app = Client(
     "my_bot",
@@ -50,31 +48,62 @@ async def status_order(client, message):
     await message.reply_text("Пожалуйста, введите номер телефона:")
     user_data[message.from_user.id] = {}
 
-@app.on_message(filters.text & filters.private)
-async def get_phone_number(client, message):
-    if message.from_user.id in user_data and "phone_number" not in user_data[message.from_user.id]:
-        user_data[message.from_user.id]["phone_number"] = message.text.strip()
-        await message.reply_text("Теперь введите номер заказа:")
-    elif message.from_user.id in user_data and "phone_number" in user_data[message.from_user.id]:
-        order_number = message.text.strip()
-        phone_number = user_data[message.from_user.id]["phone_number"]
-        await check_order_status(client, message, phone_number, order_number)
-        del user_data[message.from_user.id]
+    @app.on_message(filters.text & filters.private)
+    async def get_phone_number(client, message):
+        if message.from_user.id in user_data and "phone_number" not in user_data[message.from_user.id]:
+            phone_number = message.text.strip()
+
+            # Удаляем знак "+" в начале, если он есть
+            if phone_number.startswith("+"):
+                phone_number = phone_number[1:]
+
+            # Проверяем, что введены только цифры
+            if phone_number.isdigit():
+                user_data[message.from_user.id]["phone_number"] = phone_number
+                await message.reply_text("Теперь введите номер заказа:")
+            else:
+                await message.reply_text("Ошибка: номер телефона должен содержать только цифры. Попробуйте снова.")
+        elif message.from_user.id in user_data and "phone_number" in user_data[message.from_user.id]:
+            order_number = message.text.strip()
+
+            # Удаляем первые два символа, если они буквы
+            if order_number[:2].isalpha():
+                order_number = order_number[2:]
+
+            phone_number = user_data[message.from_user.id]["phone_number"]
+            await check_order_status(client, message, phone_number, order_number)
+            del user_data[message.from_user.id]
+
 
 async def check_order_status(client, message, phone_number, order_number):
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{API_URL_FOR_ORDER}{order_number}/", auth=HTTPBasicAuth(USERNAME, PASSWORD), timeout=REQUEST_TIMEOUT)
+            response = await client.get(f"{API_URL_FOR_ORDER}{order_number}/",
+                                        auth=HTTPBasicAuth(USERNAME, PASSWORD),
+                                        timeout=REQUEST_TIMEOUT)
             response.raise_for_status()
             order_data = response.json()
             if order_data["client"]["phone_number"] == phone_number:
-                await message.reply_text(f"Статус вашего заказа: {order_data['status']}")
+                order_status_choices = order_data['status']
+                status_choices = {
+                    'opl_na_proyavku': 'Статус твоего заказа: оплачен, в очереди на проявку! 🎞',
+                    'opl_na_skan': 'Статус твоего заказа: оплачен, в очереди на сканирование! 🎞',
+                    'opl_na_otpravku': 'Статус твоего заказа: оплачен, скоро будет отправлен на почту!',
+                    'opl_na_pechat': 'Статус твоего заказа: оплачен, в очереди на печать! 🌠',
+                    'opl_gotov': 'Статус твоего заказа: оплачен и готов 💫 Можно забирать!',
+                    'opl_gotov_otpr': 'Статус твоего заказа: оплачен, готов и отправлен на e-mail 📩',
+                    'opl_gotov_otpr_otdan': 'Статус твоего заказа: оплачен, готов, отправлен на e-mail и отдан тебе 🙂',
+                    'opl_gotov_otdan': 'Статус твоего заказа: оплачен, готов и отдан тебе 🙂',
+                    'no_gotov': 'Статус твоего заказа: не оплачен, готов',
+                    'srchno_opl_na_proyavku': 'Статус твоего заказа: ⚡️срочный заказ⚡️, оплачен, в очереди на проявку!',
+                    'srchno_opl_na_skan': 'Статус твоего заказа:⚡️срочный заказ⚡️, оплачен, в очереди на сканирование!',
+                }
+                order_status_choices = status_choices[order_status_choices]
+                await message.reply_text(f"{order_status_choices}")
             else:
                 await message.reply_text("Ошибка: введенный номер телефона не соответствует номеру в заказе.")
     except httpx.RequestError as e:
         await message.reply_text(f"Ошибка при получении данных, попробуйте позже {e}")
-
-
 
 
 @app.on_message(filters.text & filters.private & filters.regex("^Нужна помощь$"))
