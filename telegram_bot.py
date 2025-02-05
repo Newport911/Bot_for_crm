@@ -6,6 +6,9 @@ from dotenv import load_dotenv
 import httpx
 from requests.auth import HTTPBasicAuth
 
+import httpx
+from requests.auth import HTTPBasicAuth
+
 load_dotenv()
 
 API_ID = os.getenv("api_id")
@@ -14,6 +17,7 @@ BOT_TOKEN = os.getenv("bot_token")
 API_URL = os.getenv("API_URL")
 USERNAME = os.getenv("PRODUCTS_API_USERNAME")
 PASSWORD = os.getenv("PRODUCTS_API_PASSWORD")
+API_URL_FOR_ORDER = os.getenv("API_URL_FOR_ORDER")
 
 cache = TTLCache(maxsize=1, ttl=300)
 
@@ -37,9 +41,41 @@ async def start(client, message):
     )
     await message.reply_text("Добро пожаловать! Выберите опцию:", reply_markup=keyboard)
 
+
+user_data = {}
+
+
 @app.on_message(filters.text & filters.private & filters.regex("^Узнать статус заказа$"))
 async def status_order(client, message):
-    await message.reply_text("Узнайте статус заказа")
+    await message.reply_text("Пожалуйста, введите номер телефона:")
+    user_data[message.from_user.id] = {}
+
+@app.on_message(filters.text & filters.private)
+async def get_phone_number(client, message):
+    if message.from_user.id in user_data and "phone_number" not in user_data[message.from_user.id]:
+        user_data[message.from_user.id]["phone_number"] = message.text.strip()
+        await message.reply_text("Теперь введите номер заказа:")
+    elif message.from_user.id in user_data and "phone_number" in user_data[message.from_user.id]:
+        order_number = message.text.strip()
+        phone_number = user_data[message.from_user.id]["phone_number"]
+        await check_order_status(client, message, phone_number, order_number)
+        del user_data[message.from_user.id]
+
+async def check_order_status(client, message, phone_number, order_number):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{API_URL_FOR_ORDER}{order_number}/", auth=HTTPBasicAuth(USERNAME, PASSWORD), timeout=REQUEST_TIMEOUT)
+            response.raise_for_status()
+            order_data = response.json()
+            if order_data["client"]["phone_number"] == phone_number:
+                await message.reply_text(f"Статус вашего заказа: {order_data['status']}")
+            else:
+                await message.reply_text("Ошибка: введенный номер телефона не соответствует номеру в заказе.")
+    except httpx.RequestError as e:
+        await message.reply_text(f"Ошибка при получении данных, попробуйте позже {e}")
+
+
+
 
 @app.on_message(filters.text & filters.private & filters.regex("^Нужна помощь$"))
 async def help_request(client, message):
