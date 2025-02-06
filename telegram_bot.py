@@ -114,10 +114,13 @@ async def help_request(client, message):
 @app.on_message(filters.text & filters.private & filters.regex("^Наши соц сети$"))
 async def social_media(client, message):
     text = (
-        "🎞 *Прастора аналагавай фатаграфіі ў Менску*\n\n"
-        "📍 *Кальварыйская 21к6*\n\n"
-        "⏰ *ПН-НДЗ 12:00-21:00 (кожнае 31-е — выходны)*\n\n"
-        "📲 *Мы ў Instagram, VK, FB* [@phsquat](https://instagram.com/phsquat)"
+        "🎞 Пространство аналоговой фотографии в Минске\n\n"
+        "📍 Кальварийская 21к6\n\n"
+        "⏰ ПН-ВС 12:00-21:00 (каждое 31-е — выходной)\n\n"
+        "📸 Мы в Instagram: [@phsquat](https://instagram.com/phsquat)\n"
+        "📘 Мы в Facebook: [@phsquat](https://www.facebook.com/phsquat)\n"
+        "🎵 Мы в TikTok: [@phsquat](https://www.tiktok.com/@phsquat)\n"
+        "🌐 Мы в VK: [@phsquat](https://vk.com/phsquat)\n"
     )
     await message.reply_text(f"{str(text)}")
 
