@@ -1,22 +1,17 @@
-FROM python:3.11-slim
+# Use an official Python runtime as a parent image
+FROM python:3.9-slim
 
-WORKDIR /app
+# Set the working directory in the container
+WORKDIR /usr/src/app
 
-# Install system dependencies
-RUN apt-get update && \
-    apt-get install -y curl iputils-ping net-tools && \
-    rm -rf /var/lib/apt/lists/*
-
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application code
+# Copy the current directory contents into the container at /usr/src/app
 COPY . .
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+# Install any needed packages specified in requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Run the application
+# Make port 80 available to the world outside this container
+EXPOSE 81
+
+# Run bot.py when the container launches
 CMD ["python", "telegram_bot.py"]

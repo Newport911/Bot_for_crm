@@ -113,7 +113,13 @@ async def help_request(client, message):
 
 @app.on_message(filters.text & filters.private & filters.regex("^Наши соц сети$"))
 async def social_media(client, message):
-    await message.reply_text("Ссылка на наши соцсети")
+    text = (
+        "🎞 *Прастора аналагавай фатаграфіі ў Менску*\n\n"
+        "📍 *Кальварыйская 21к6*\n\n"
+        "⏰ *ПН-НДЗ 12:00-21:00 (кожнае 31-е — выходны)*\n\n"
+        "📲 *Мы ў Instagram, VK, FB* [@phsquat](https://instagram.com/phsquat)"
+    )
+    await message.reply_text(f"{str(text)}")
 
 @app.on_message(filters.text & filters.private & filters.regex("^Пленка в наличии$"))
 async def available_products(client, message):
@@ -136,8 +142,9 @@ async def available_products(client, message):
                     elif quantity < 20:
                         quantity_text = "Много"
                     else:
-                        quantity_text = "Целая гора"
-                    product_list += f"🔹 **Название:** {product['name']}\n💰 Цена: {product['price']}\n📊 Количество: {quantity_text}\n\n"
+                        quantity_text = "Очень много"
+                    product_list += (f"🔹 **Название:** {product['name']}\n💰 Цена: {product['price']}\n📊 Количество: "
+                                     f"{quantity_text}\n\n")
                 cache["products"] = product_list
         except httpx.RequestError as e:
             await message.reply_text(f"Ошибка при получении данных, попробуйте позже {e}")
